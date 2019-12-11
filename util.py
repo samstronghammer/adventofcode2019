@@ -60,6 +60,11 @@ def nthsmallestval(l, n):
 def sortreading(l):
   return sorted(l, key = lambda x: (x[1], x[0]))
 
+def clear_terminal():
+  print(chr(27) + "[2J")
+
+def print_at_loc(loc, s):
+  print("\033[" + str(loc[1]) + ";" + str(loc[0]) + "H" + str(s))
 
 
 
