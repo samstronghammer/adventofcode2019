@@ -1,6 +1,16 @@
+from itertools import chain
+
 def filetolist(filename):
   with open(filename, 'r') as f:
     return [s.strip() for s in f.readlines()]
+
+def filetointcode(filename):
+  with open(filename, 'r') as f:
+    return [int(x) for x in list(chain(*[l.split(",") for l in [s.strip() for s in f.readlines()]]))]
+
+def filetointcodelist(filename):
+  with open(filename, 'r') as f:
+    return [[int(x) for x in l.split(",")] for l in [s.strip() for s in f.readlines()]]
 
 def filetointlist(filename):
   return [int(x) for x in filetolist(filename)]
