@@ -54,6 +54,9 @@ def mindictval(d):
 def vecadd(v1, v2):
   return tuple([sum(x) for x in zip(v1, v2)])
 
+def vecminus(v1, v2):
+  return tuple([(x[0] - x[1]) for x in zip(v1, v2)])
+
 def manhattan_dist(v1, v2):
   return sum([abs(x[0] - x[1]) for x in zip(v1, v2)])
   #return abs(v1[0] - v2[0]) + abs(v1[1] - v2[1])
