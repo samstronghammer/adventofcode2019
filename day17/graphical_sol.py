@@ -4,9 +4,6 @@ sys.path.append("..")
 import util
 import math
 
-# This works and maintains internal state for me. I think I'll do some
-# more cleaning up later.
-
 class Computer():
 	def __init__(self, get_input=lambda: None, filename="in.txt", i=0, relbase=0):
 		l = util.filetointcode(filename)
@@ -52,7 +49,9 @@ class Computer():
 					self.i += 4
 				if code == 3:
 					input_val = self.get_input()
+					# print(f"HI: {input_val}")
 					if input_val == None:
+						# print("NONE")
 						return None
 					if letters[2] == "2":
 						self.write(self.read(self.i + 1) + self.relbase, input_val)
@@ -90,29 +89,94 @@ class Computer():
 				print(code)
 				return None
 
+def draw_game(panels, offset):
+	for key in panels:
+		util.print_at_loc(util.vecadd(key, offset), panels[key])
 
-c = Computer()
-c.write(0, 2)
-panels = {}
 
-paddle_x = 0
-ball_x = 0
 
+comp = Computer()
+
+a = {}
+r = 0
+c = 0
 while True:
-	x = c.calc()
-	if x == None:
+	val = comp.calc()
+	if val == None:
 		break
-	y = c.calc()
-	val = c.calc()
-	panels[(x, y)] = val
-	if val == 4:
-		ball_x = x
-	if val == 3:
-		paddle_x = x
+	if val == 10:
+		r += 1
+		c = 0
+	else:
+		char = str(chr(val))
+		a[(c, r)] = char
+		c += 1
 
-print("Part 1")
 tot = 0
-for k in panels:
-	if panels[k] == 2:
-		tot += 1
-print(tot)
+for k in a:
+	intersection = True
+	for adj in util.adj4(k):
+		if not adj in a:
+			intersection = False
+			break
+		if a[adj] == ".":
+			intersection = False
+			break
+	if intersection:
+		tot += k[0]*k[1]
+
+util.clear_terminal()
+
+util.print_at_loc((1, 1), "Part 1")
+util.print_at_loc((1, 2), tot)
+util.print_at_loc((1, 3), "Part 2")
+
+A = "L,12,L,12,R,12"
+B = "L,8,L,8,R,12,L,8,L,8"
+C = "L,10,R,8,R,12"
+master = "A,A,B,C,C,A,B,C,A,B"
+
+total = master + "\n" + A + "\n" + B + "\n" + C + "\n" + "y" + "\n"
+input_index = 0
+
+def get_input_func2():
+	global input_index
+	ans = ord(total[input_index])
+	input_index += 1
+	return ans
+
+
+comp2 = Computer(get_input=get_input_func2)
+comp2.write(0, 2)
+a = {}
+r = 0
+c = 0
+just_added_row = False
+while True:
+	val = comp2.calc()
+	if val == None:
+		break
+	if val > 256:
+		util.print_at_loc((1, 4), val)
+		break
+	else:
+		if val == 10:
+			if just_added_row:
+				draw_game(a, (1, 5))
+				a = {}
+				r = 0
+				c = 0
+			else:
+				r += 1
+				c = 0
+				just_added_row = True
+		else:
+			just_added_row = False
+			char = str(chr(val))
+			a[(c, r)] = char
+			c += 1
+
+util.print_at_loc((1, 70), "")
+
+
+

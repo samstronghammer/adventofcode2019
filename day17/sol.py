@@ -4,8 +4,16 @@ sys.path.append("..")
 import util
 import math
 
-# This works and maintains internal state for me. I think I'll do some
-# more cleaning up later.
+# Today was fun! My only complaint was that my robot fell off of the edge of the
+# map so I couldn't see where it was and thought the system had glitched or
+# something. It also wasn't exactly clear how the "prompting" or "live feed" 
+# would work. I figured out that each "frame" of the feed was separated by
+# an extra newline, which allowed me to polish the graphical solution.
+# My method for writing the movement functions was to write down the entire
+# sequence needed and figure out the common chunks. Fairly straightforward.
+# I had a dumb bug where I accidentally flipped my r and c values so the entire
+# map was flipped. I had to switch all of the Ls to Rs and vice versa.
+# Part 1 of today was my best placement so far this year! 126th :)
 
 class Computer():
 	def __init__(self, get_input=lambda: None, filename="in.txt", i=0, relbase=0):
@@ -52,7 +60,9 @@ class Computer():
 					self.i += 4
 				if code == 3:
 					input_val = self.get_input()
+					# print(f"HI: {input_val}")
 					if input_val == None:
+						# print("NONE")
 						return None
 					if letters[2] == "2":
 						self.write(self.read(self.i + 1) + self.relbase, input_val)
@@ -90,29 +100,63 @@ class Computer():
 				print(code)
 				return None
 
+comp = Computer()
 
-c = Computer()
-c.write(0, 2)
-panels = {}
-
-paddle_x = 0
-ball_x = 0
-
+a = {}
+r = 0
+c = 0
 while True:
-	x = c.calc()
-	if x == None:
+	val = comp.calc()
+	if val == None:
 		break
-	y = c.calc()
-	val = c.calc()
-	panels[(x, y)] = val
-	if val == 4:
-		ball_x = x
-	if val == 3:
-		paddle_x = x
+	if val == 10:
+		r += 1
+		c = 0
+	else:
+		char = str(chr(val))
+		a[(c, r)] = char
+		c += 1
+
+tot = 0
+for k in a:
+	intersection = True
+	for adj in util.adj4(k):
+		if not adj in a:
+			intersection = False
+			break
+		if a[adj] == ".":
+			intersection = False
+			break
+	if intersection:
+		tot += k[0]*k[1]
 
 print("Part 1")
-tot = 0
-for k in panels:
-	if panels[k] == 2:
-		tot += 1
 print(tot)
+print("Part 2")
+
+A = "L,12,L,12,R,12"
+B = "L,8,L,8,R,12,L,8,L,8"
+C = "L,10,R,8,R,12"
+master = "A,A,B,C,C,A,B,C,A,B"
+
+total = master + "\n" + A + "\n" + B + "\n" + C + "\n" + "n" + "\n"
+input_index = 0
+
+def get_input_func2():
+	global input_index
+	ans = ord(total[input_index])
+	input_index += 1
+	return ans
+
+comp2 = Computer(get_input=get_input_func2)
+comp2.write(0, 2)
+while True:
+	val = comp2.calc()
+	if val == None:
+		break
+	if val > 256:
+		print(val)
+
+
+
+
