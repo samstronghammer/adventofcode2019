@@ -157,6 +157,3 @@ while True:
 	if val > 256:
 		print(val)
 
-
-
-
