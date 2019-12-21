@@ -202,11 +202,6 @@ while True:
 				panels[loc] = (0, back) if out == 1 else (2, back)
 	draw_game(panels, (22, 22), loc)
 
-with open("pickle.cache", 'wb') as f:
-	pickle.dump(panels, f)
-
-(-21, -21)
-(19, 19)
 filtered_panels = {}
 oxygen_loc = None
 for loc in panels:
