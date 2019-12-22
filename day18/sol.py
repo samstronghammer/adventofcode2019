@@ -60,8 +60,8 @@ def min_dist_to_finish(currloc, graph, keylocs, doorlocs, depth, rope, can_acces
 		# print(depth)
 		# if depth == 0:
 		# 	print(min_dist)
-		if depth < 10:# and min_dist != None:
-			print("depth:",depth,"dist:",min_dist)
+		# if depth < 10:# and min_dist != None:
+			# print("depth:",depth,"dist:",min_dist)
 		can_access.remove(k)
 		# print("locs",keylocs)
 		# path = nx.bidirectional_dijkstra(graph, currloc, keylocs[k])
@@ -118,7 +118,7 @@ def min_dist_to_finish(currloc, graph, keylocs, doorlocs, depth, rope, can_acces
 
 
 
-fn = "./in4.txt"
+fn = "./in3.txt"
 
 l = util.filetolist(fn)
 
@@ -175,9 +175,9 @@ for k in keylocs:
 		blocked_keys.add(k)
 		continue
 
-print(accessible_keys)
-print(blocked_keys)
-print(key_map)
+# print(accessible_keys)
+# print(blocked_keys)
+# print(key_map)
 print("Part 1")
 print(min_dist_to_finish(currloc, G, keylocs, doorlocs, 0, None, accessible_keys, blocked_keys, key_map))
 

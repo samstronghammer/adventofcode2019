@@ -122,39 +122,6 @@ def get_dir(prev, dest):
 	d = {(0, -1): DIR.UP, (0, 1): DIR.DOWN, (1, 0): DIR.RIGHT, (-1, 0): DIR.LEFT}
 	return d[util.vecminus(dest, prev)]
 
-def n_to_c(n):
-	if n == 0:
-		return "."
-	if n == 1:
-		return "#"
-	if n == 2:
-		return "!"
-
-def draw_game(panels, offset, loc):
-	for key in panels:
-		if key == loc:
-			util.print_at_loc(util.vecadd(key, offset), "0")
-		else:
-			util.print_at_loc(util.vecadd(key, offset), n_to_c(panels[key][0]))
-
-def get_input_seq(panels, loc):
-	dest = None
-	prev = None
-	for key in panels:
-		if panels[key][0] != 1:
-			for loc2 in util.adj4(key):
-				if not loc2 in panels:
-					dest = loc2
-					prev = key
-					break
-		if dest != None:
-			break
-	if dest == None:
-		return None, None
-	rel = get_dir(prev, dest)
-	seq = list(reversed([get_back(x) for x in panels[loc][1]])) + panels[prev][1] + [get_dir(prev, dest)]
-	return seq, panels[prev][1] + [get_dir(prev, dest)]
-
 def dijkstra(panels):
 	source = (0, 0)
 	dists = {}
@@ -184,22 +151,30 @@ def dijkstra(panels):
 loc = (0, 0)
 c = Computer()
 # 0: ok, 1: wall, 2: system
-panels = {(0, 0): (0, [])}
-util.clear_terminal()
-while True:
-	seq, back = get_input_seq(panels, loc)
-	if seq == None:
-		break
-	for d in seq:
-		out, = c.calc([d.value])
-		if out == 0:
-			panels[get_move(loc, d)] = (1, back)
-			break
+# second part of tuple is list of [completed, backtrack dir]
+panels = {(0, 0): (0, [False, None])}
+while not panels[loc][1][0] or panels[loc][1][1] != None:
+	if panels[loc][1][0]:
+		# backtrack
+		_, = c.calc([panels[loc][1][1].value])
+		loc = get_move(loc, panels[loc][1][1])
+	else:
+		# explore
+		next_place = None
+		for new_place in util.adj4(loc):
+			if not new_place in panels:
+				next_place = new_place
+				break
+		if next_place == None:
+			panels[loc][1][0] = True
 		else:
-			loc = get_move(loc, d)
-			if not loc in panels:
-				panels[loc] = (0, back) if out == 1 else (2, back)
-	draw_game(panels, (22, 22), loc)
+			step = get_dir(loc, next_place)
+			out, = c.calc([step.value])
+			if out == 0:
+				panels[next_place] = (1, [True, get_back(step)])
+			else:
+				loc = next_place
+				panels[loc] = (0, [False, get_back(step)]) if out == 1 else (2, [False, get_back(step)])
 
 filtered_panels = {}
 oxygen_loc = None
@@ -208,9 +183,10 @@ for loc in panels:
 		filtered_panels[loc] = panels[loc][0]
 	if panels[loc][0] == 2:
 		oxygen_loc = loc
-util.print_at_loc((1, 42), "Part 1")
-util.print_at_loc((1, 43), dijkstra(filtered_panels)[oxygen_loc])
-util.print_at_loc((1, 44), "Part 2")
+
+print("Part 1")
+print(dijkstra(filtered_panels)[oxygen_loc])
+print("Part 2")
 oxygen = set()
 oxygen.add(oxygen_loc)
 no_oxygen = set()
@@ -229,4 +205,4 @@ while len(no_oxygen) > 0:
 		no_oxygen.remove(o)
 		oxygen.add(o)
 	mins += 1
-util.print_at_loc((1, 45), mins)
+print(mins)

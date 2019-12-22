@@ -4,6 +4,13 @@ sys.path.append("..")
 import util
 import math
 from enum import unique, Enum
+import time
+
+# Change the tic speeds set here to see how the maze construction
+# and oxygen algorithms work.
+maze_tic_speed = 0
+oxygen_tic_speed = 0
+# I improved the drawing of the maze to be almost instant.
 
 @unique
 class DIR(Enum):
@@ -130,30 +137,19 @@ def n_to_c(n):
 	if n == 2:
 		return "!"
 
-def draw_game(panels, offset, loc):
-	for key in panels:
-		if key == loc:
-			util.print_at_loc(util.vecadd(key, offset), "0")
-		else:
-			util.print_at_loc(util.vecadd(key, offset), n_to_c(panels[key][0]))
+def draw_game(new_panel, offset, new_loc, old_loc):
+	util.print_at_loc(util.vecadd(old_loc, offset), ".")
+	if new_panel != None:
+		util.print_at_loc(util.vecadd(new_panel[0], offset), new_panel[1])
+	util.print_at_loc(util.vecadd(new_loc, offset), "0")
 
-def get_input_seq(panels, loc):
-	dest = None
-	prev = None
-	for key in panels:
-		if panels[key][0] != 1:
-			for loc2 in util.adj4(key):
-				if not loc2 in panels:
-					dest = loc2
-					prev = key
-					break
-		if dest != None:
-			break
-	if dest == None:
-		return None, None
-	rel = get_dir(prev, dest)
-	seq = list(reversed([get_back(x) for x in panels[loc][1]])) + panels[prev][1] + [get_dir(prev, dest)]
-	return seq, panels[prev][1] + [get_dir(prev, dest)]
+def draw_maze(panels, offset):
+	for p in panels:
+		util.print_at_loc(util.vecadd(p, offset), n_to_c(panels[p][0]))
+
+def draw_oxygen(new_oxygen_locs, offset):
+	for l in new_oxygen_locs:
+		util.print_at_loc(util.vecadd(l, offset), 'o')
 
 def dijkstra(panels):
 	source = (0, 0)
@@ -184,22 +180,38 @@ def dijkstra(panels):
 loc = (0, 0)
 c = Computer()
 # 0: ok, 1: wall, 2: system
-panels = {(0, 0): (0, [])}
+# second part of tuple is list of [completed, backtrack dir]
+panels = {(0, 0): (0, [False, None])}
 util.clear_terminal()
-while True:
-	seq, back = get_input_seq(panels, loc)
-	if seq == None:
-		break
-	for d in seq:
-		out, = c.calc([d.value])
-		if out == 0:
-			panels[get_move(loc, d)] = (1, back)
-			break
+while not panels[loc][1][0] or panels[loc][1][1] != None:
+	# add in this line to watch the logic of the maze construction
+	time.sleep(maze_tic_speed)
+	old_loc = loc
+	new_panel = None
+	if panels[loc][1][0]:
+		# backtrack
+		_, = c.calc([panels[loc][1][1].value])
+		loc = get_move(loc, panels[loc][1][1])
+	else:
+		# explore
+		next_place = None
+		for new_place in util.adj4(loc):
+			if not new_place in panels:
+				next_place = new_place
+				break
+		if next_place == None:
+			panels[loc][1][0] = True
 		else:
-			loc = get_move(loc, d)
-			if not loc in panels:
-				panels[loc] = (0, back) if out == 1 else (2, back)
-	draw_game(panels, (22, 22), loc)
+			step = get_dir(loc, next_place)
+			out, = c.calc([step.value])
+			if out == 0:
+				panels[next_place] = (1, [True, get_back(step)])
+				new_panel = (next_place, "#")
+			else:
+				loc = next_place
+				panels[loc] = (0, [False, get_back(step)]) if out == 1 else (2, [False, get_back(step)])
+				new_panel = (loc, "." if out == 1 else "!")
+	draw_game(new_panel, (22, 22), loc, old_loc)
 
 filtered_panels = {}
 oxygen_loc = None
@@ -210,16 +222,20 @@ for loc in panels:
 		oxygen_loc = loc
 util.print_at_loc((1, 42), "Part 1")
 util.print_at_loc((1, 43), dijkstra(filtered_panels)[oxygen_loc])
-util.print_at_loc((1, 44), "Part 2")
+util.print_at_loc((1, 44), "Press Enter To Continue")
+input()
+util.clear_terminal()
+draw_maze(panels, (22,22))
 oxygen = set()
 oxygen.add(oxygen_loc)
 no_oxygen = set()
 for p in filtered_panels:
 	no_oxygen.add(p)
 no_oxygen.remove(oxygen_loc)
-
+draw_oxygen(oxygen, (22,22))
 mins = 0
 while len(no_oxygen) > 0:
+	time.sleep(oxygen_tic_speed)
 	possible_new = set()
 	for o in oxygen:
 		for n in util.adj4(o):
@@ -228,5 +244,7 @@ while len(no_oxygen) > 0:
 	for o in actual_new:
 		no_oxygen.remove(o)
 		oxygen.add(o)
+	draw_oxygen(actual_new, (22,22))
 	mins += 1
-util.print_at_loc((1, 45), mins)
+util.print_at_loc((1, 42), "Part 2")
+util.print_at_loc((1, 43), mins)

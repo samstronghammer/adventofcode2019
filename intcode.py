@@ -1,15 +1,14 @@
 #!/usr/bin/python3
 import sys
-sys.path.append("..")
-import util
 import math
+from itertools import chain
 
 # This works and maintains internal state for me. I think I'll do some
 # more cleaning up later.
 
 class Computer():
 	def __init__(self, get_input=lambda: None, filename="in.txt", i=0, relbase=0):
-		l = util.filetointcode(filename)
+		l = Computer.filetointcode(filename)
 		self.state = {}
 		for q in range(len(l)):
 			self.write(q, l[q])
@@ -17,6 +16,11 @@ class Computer():
 		self.relbase = relbase
 		self.halted = False
 		self.get_input = get_input
+
+	def filetointcode(filename):
+		with open(filename, 'r') as f:
+			return [int(x) for x in list(chain(*[l.split(",") for l in [s.strip() for s in f.readlines()]]))]
+
 
 	def read(self, index):
 		if index in self.state:
@@ -51,14 +55,15 @@ class Computer():
 					self.write(loc, sol)
 					self.i += 4
 				if code == 3:
-					input_val = self.get_input()
-					if input_val == None:
+					try:
+						input_val = next(self.get_input)
+						if letters[2] == "2":
+							self.write(self.read(self.i + 1) + self.relbase, input_val)
+						else:
+							self.write(self.read(self.i + 1), input_val)
+						self.i += 2
+					except StopIteration:
 						return None
-					if letters[2] == "2":
-						self.write(self.read(self.i + 1) + self.relbase, input_val)
-					else:
-						self.write(self.read(self.i + 1), input_val)
-					self.i += 2
 				if code == 4:
 					ans = self.getval(self.i + 1, letters[2])
 					self.i += 2
