@@ -5,6 +5,10 @@ import util
 import intcode
 import math
 
+# I liked this one. Forces the user to constrain the search space.
+# I found the value of 2000 for how far I had to look by guessing
+# around. Part 1 went very quickly for me.
+
 inputx = 0
 inputy = 0
 sending_x = True

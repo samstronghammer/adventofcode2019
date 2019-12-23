@@ -1,5 +1,9 @@
 from itertools import chain
 
+def filetorawlist(filename):
+  with open(filename, 'r') as f:
+    return f.readlines()
+
 def filetolist(filename):
   with open(filename, 'r') as f:
     return [s.strip() for s in f.readlines()]
