@@ -64,12 +64,7 @@ while True:
   if not loc in panels:
     panels[loc] = 0
   c.get_input = get_input(loc)
-  output = []
-  while True:
-    one_output = c.calc()
-    if one_output == None:
-      break
-    output.append(one_output)
+  output = c.calc_list()
 
   panels[loc] = output[0]
   if output[1] == 0:
@@ -98,12 +93,7 @@ while True:
   if not loc in panels:
     panels[loc] = 0
   c.get_input = get_input(loc)
-  output = []
-  while True:
-    one_output = c.calc()
-    if one_output == None:
-      break
-    output.append(one_output) 
+  output = c.calc_list()
 
   panels[loc] = output[0]
   if output[1] == 0:
