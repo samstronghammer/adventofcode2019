@@ -3,31 +3,33 @@ import sys
 sys.path.append("..")
 import util
 import math
+import intcode
 l = util.filetowordlist("./in.txt")
-for n in range(100):
-	for v in range(100):
-		opcodes = list(map(lambda x: int(x), l[0].split(",")))
-		opcodes[1] = n
-		opcodes[2] = v
-		i = 0
-		while True:
-			code = opcodes[i]
-			if code == 1 or code == 2:
-				a1 = opcodes[opcodes[i + 1]]
-				a2 = opcodes[opcodes[i + 2]]
-				loc = opcodes[i + 3]
-				sol = a1 + a2 if code == 1 else a1 * a2
-				opcodes[loc] = sol
-			elif code == 99:
-				break
-			else:
-				print("ERROR")
-				print(code)
-				break
-			i += 4
-		if n == 12 and v == 2:
-			print("Part 1")
-			print(opcodes[0])
-		if opcodes[0] == 19690720:
-			print("Part 2")
-			print(100 * n + v)
+
+def calc_ans(input):
+  c = intcode.Computer()
+  c.write(1, input[0])
+  c.write(2, input[1])
+  c.calc()
+  return c.read(0)
+
+def calc_p2():
+  bigger = 0
+  ans = None
+  while True:
+    for smaller in range(bigger + 1):
+      ans1 = calc_ans((bigger, smaller))
+      if ans1 == 19690720:
+        ans = (bigger, smaller)
+      ans2 = calc_ans((smaller, bigger))
+      if ans2 == 19690720:
+        ans = (smaller, bigger)
+    bigger += 1
+    if ans != None:
+      break
+  return 100 * ans[0] + ans[1]
+
+print("Part 1:")
+print(calc_ans((12, 2)))
+print("Part 2:")
+print(calc_p2())
