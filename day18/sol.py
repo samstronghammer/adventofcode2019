@@ -4,6 +4,9 @@ sys.path.append("..")
 import util
 import networkx as nx
 
+# Current solution is a slightly optimized recursive hamiltonian path search.
+# Takes about 5 minutes for parts 1 and 2.
+
 def get_distances(graph, important_locations):
   important_location_distances = {}
   for k in important_locations:
