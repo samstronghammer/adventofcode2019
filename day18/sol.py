@@ -2,182 +2,194 @@
 import sys
 sys.path.append("..")
 import util
-import math
 import networkx as nx
 
-def get_key_map(graph, keylocs):
-	key_map = {}
-	for k in keylocs:
-		key_map[k] = {}
-		for k2 in keylocs:
-			if k != k2:
-				if k2 in key_map and k in key_map[k2]:
-					key_map[k][k2] = key_map[k2][k]
-				else:
-					key_map[k][k2] = nx.bidirectional_dijkstra(graph, keylocs[k], keylocs[k2])[0]
-	return key_map
+def get_distances(graph, important_locations):
+  important_location_distances = {}
+  for k in important_locations:
+    # if it's a door, allow out edges for just this door
+    node = important_locations[k]
+    is_door = k.isupper()
+    if is_door:
+      for node2 in util.adj4(node):
+        if not node2 in graph.nodes:
+          continue
+        graph.add_edge(node, node2, weight=1)
 
-memoized = {}
+    all_path_lengths = nx.single_source_dijkstra_path_length(graph, important_locations[k])
+    important_location_distances[k] = all_path_lengths
 
-def key_set_min_dist(key_set, key_map):
-	if len(key_set) < 2:
-		return 0
-	tup = tuple(sorted(key_set))
-	if tup in memoized:
-		return memoized[tup]
-	all_dists = []
-	for k in key_set:
-		min_dist = None
-		for k2 in key_set:
-			if k != k2:
-				dist = key_map[k][k2]
-				if min_dist == None or dist < min_dist:
-					min_dist = dist
-		all_dists.append(min_dist)
-	# could be subtract max? Unsure.
-	memoized[tup] = sum(all_dists) - min(all_dists)
-	return memoized[tup]
+    # remove the added door edges
+    if is_door:
+      for node2 in util.adj4(node):
+        if not node2 in graph.nodes:
+          continue
+        graph.remove_edge(node, node2)
+  return important_location_distances
 
-def min_dist_to_finish(currloc, graph, keylocs, doorlocs, depth, rope, can_access, cant_access, key_map):
-	if rope != None and rope < 0:
-		# print(depth)
-		return None
+file_name = "./in.txt"
+l = util.filetolist(file_name)
+robot_chars = ["1", "2", "3", "4"]
 
-	if rope != None and key_set_min_dist(set(can_access.union(cant_access)), key_map) > rope:
-		return None
+def get_minimum_distance(is_p2):
+  locs = {}
+  for y in range(len(l)):
+    for x in range(len(l[y])):
+      locs[(x, y)] = l[y][x]
 
-	if len(keylocs) == 0:
-		return 0
+  important_locations = {}
+  G = nx.DiGraph()
 
-	min_dist = None
+  # fill in nodes
+  for key in locs:
+    c = locs[key]
+    if c == "#":
+      continue
+    if c != ".":
+      important_locations[c] = key
+    G.add_node(key)
 
-	can_access_list = list(can_access)
-	can_access_dists = [nx.bidirectional_dijkstra(graph, currloc, keylocs[k])[0] for k in can_access_list]
-	zipped = sorted(zip(can_access_list, can_access_dists), key=lambda x: x[1])
-	# print(zipped)
+  if is_p2:
+    start_loc = important_locations["@"]
+    del important_locations["@"]
+    locs[start_loc] = "#"
+    G.remove_node(start_loc)
+    adj_4 = util.adj4(start_loc)
+    adj_8 = util.adj8(start_loc)
+    robots = robot_chars.copy()
+    for adj in adj_8:
+      if adj in adj_4:
+        G.remove_node(adj)
+        locs[adj] = "#"
+      else:
+        bot = robots.pop()
+        locs[adj] = bot
+        important_locations[bot] = adj
 
-	for k, pathlen in zipped:
-		# print(depth)
-		# if depth == 0:
-		# 	print(min_dist)
-		# if depth < 10:# and min_dist != None:
-			# print("depth:",depth,"dist:",min_dist)
-		can_access.remove(k)
-		# print("locs",keylocs)
-		# path = nx.bidirectional_dijkstra(graph, currloc, keylocs[k])
-		# pathlen = path[0]
-		keylocs_val = keylocs[k]
-		keylocs.pop(k)
-		doorlocs_val = None
-		edges_added = []
-		now_can_access = []
-		if k.upper() in doorlocs:
-			free_pos = doorlocs[k.upper()]
-			for loc in util.adj4(free_pos):
-				if loc in graph.nodes and not loc in doorlocs.values():
-					edges_added.append((free_pos, loc))
-			graph.add_edges_from(edges_added, weight=1)
-			doorlocs_val = doorlocs[k.upper()]
-			doorlocs.pop(k.upper())
-			# print(keylocs)
-			# print(cant_access)
-			# print(can_access)
-			for cant in cant_access:
-				# print(cant)
-				try:
-					nx.bidirectional_dijkstra(graph, keylocs_val, keylocs[cant])
-					now_can_access.append(cant)
-				except nx.NetworkXNoPath:
-					continue
-		ropetogive = None
-		if min_dist == None:
-			if rope != None:
-				ropetogive = rope - pathlen
-		else:
-			ropetogive = min_dist - pathlen
+  for node in G.nodes:
+    for node2 in util.adj4(node):
+      if not node2 in G.nodes:
+        continue
+      G.add_edge(node, node2, weight=1)
 
-		for can in now_can_access:
-			can_access.add(can)
-			cant_access.remove(can)
-		res = min_dist_to_finish(keylocs_val, graph, keylocs, doorlocs, depth + 1, ropetogive, can_access, cant_access, key_map)
-		if res != None:
-			new_min_dist = pathlen + res
-			if min_dist == None or new_min_dist < min_dist:
-				min_dist = new_min_dist
-		keylocs[k] = keylocs_val
-		if doorlocs_val != None:
-			for e in edges_added:
-				graph.remove_edges_from(edges_added)
-			doorlocs[k.upper()] = doorlocs_val
-		for can in now_can_access:
-			can_access.remove(can)
-			cant_access.add(can)
-		can_access.add(k)
-	return min_dist
+  # doors need to ONLY have in-edges
+  for key in important_locations:
+    if not key.isupper():
+      continue
+    node = important_locations[key]
+    for node2 in util.adj4(node):
+      if not node2 in G.nodes:
+        continue
+      G.remove_edge(node, node2)
 
+  important_location_distances = get_distances(G, important_locations) # {important key: {location: distance}}
+  G2 = nx.Graph()
+  for key in important_locations:
+    node = important_locations[key]
+    for key2 in important_locations:
+      if key == key2:
+        continue
+      node2 = important_locations[key2]
+      dist = important_location_distances.get(key).get(node2)
+      if dist == None:
+        continue
+      G2.add_edge(key, key2, weight=dist)
 
+  def calc_edges_to_change_to_remove_node(graph, key):
+    if not graph.has_node(key):
+      return ([], []) 
+    edges_to_add = []
+    edges_to_remove = []
+    neighbors = list(graph.neighbors(key))
+    for i in range(len(neighbors)):
+      for j in range(len(neighbors)):
+        if j <= i:
+          continue
+        n1 = neighbors[i]
+        n2 = neighbors[j]
+        old_edge_data = graph.get_edge_data(n1, n2)
+        old_dist = float("inf") 
+        if old_edge_data != None:
+          old_dist = old_edge_data["weight"]
+        new_dist = graph.get_edge_data(key, n1)["weight"] + graph.get_edge_data(key, n2)["weight"]
+        if new_dist < old_dist:
+          if old_edge_data != None:
+            edges_to_remove.append((n1, n2, old_dist))
+          edges_to_add.append((n1, n2, new_dist))
+    removed_node_edges = list((x[0], x[1], x[2]["weight"]) for x in graph.edges(key, data=True))
+    edges_to_remove.extend(removed_node_edges)
+    return (edges_to_add, edges_to_remove) 
 
+  def roll_forward(graph, mods):
+    for edge in mods[1]:
+      graph.remove_edge(edge[0], edge[1])
+    for edge in mods[0]:
+      graph.add_edge(edge[0], edge[1], weight=edge[2])
 
-fn = "./in3.txt"
+  def roll_back(graph, mods):
+    for edge in mods[0]:
+      graph.remove_edge(edge[0], edge[1])
+    for edge in mods[1]:
+      graph.add_edge(edge[0], edge[1], weight=edge[2])
 
-l = util.filetolist(fn)
+  cache = {}
 
-locs = {}
-for y in range(len(l)):
-	for x in range(len(l[y])):
-		locs[(x, y)] = l[y][x]
+  def calc_key(graph, curr_locations):
+    nodes = list(graph.nodes())
+    nodes.sort()
+    sorted_locations = sorted(curr_locations)
+    return (tuple(nodes), tuple(sorted_locations))
 
-currloc = None
-keylocs = {}
-doorlocs = {}
-G = nx.Graph()
+  def find_best_path(graph, curr_locations, upperbound):
+    cache_key = calc_key(graph, curr_locations)
+    if cache.get(cache_key) != None:
+      return cache.get(cache_key)
+    neighbors = []
+    for loc in curr_locations:
+      some_neighbors = map(lambda n: (loc, n), graph.neighbors(loc))
+      neighbors.extend(some_neighbors)
+    options = []
+    mod_graphs = {}
+    for neighbor in neighbors:
+      if neighbor[1].isupper():
+        continue
+      walk_to_neighbor_dist = graph.get_edge_data(neighbor[0], neighbor[1])["weight"]
+      options.append((neighbor[0], neighbor[1], walk_to_neighbor_dist))
+      if mod_graphs.get(neighbor[0]) == None:
+        mod_graphs[neighbor[0]] = calc_edges_to_change_to_remove_node(graph, neighbor[0])
+    if len(options) == 0:
+      return 0
+    options.sort(key=lambda x: x[2]) # closest first
+    my_upperbound = upperbound
+    best_path_length = float("inf")
+    for option in options:
+      neighbor = option[1]
+      walk_to_neighbor_dist = option[2]
+      if walk_to_neighbor_dist > my_upperbound:
+        continue
+      mod_1_tuple = mod_graphs[option[0]]
+      roll_forward(graph, mod_1_tuple)
+      graph.remove_node(option[0])
+      mod_2_tuple = calc_edges_to_change_to_remove_node(graph, neighbor.upper())
+      roll_forward(graph, mod_2_tuple)
+      graph.remove_node(neighbor.upper())
 
-for key in locs:
-	c = locs[key]
-	if c != "#":
-		if c != ".":
-			if c == "@":
-				currloc = key
-			elif c.islower():
-				keylocs[c] = key
-			else:
-				assert c.isupper()
-				doorlocs[c] = key
-		G.add_node(key)
+      new_length = walk_to_neighbor_dist + find_best_path(graph, [neighbor if x == option[0] else x for x in curr_locations], my_upperbound - walk_to_neighbor_dist)
+      if new_length < best_path_length:
+        best_path_length = new_length
+        my_upperbound = best_path_length
 
-def invalid(c):
-	return c.isupper()
+      roll_back(graph, mod_2_tuple)
+      roll_back(graph, mod_1_tuple)
 
-for node in G.nodes:
-	for node2 in util.adj4(node):
-		if node2 in G.nodes:
-			G.add_edge(node, node2, weight=1)
+    cache[cache_key] = best_path_length
+    return best_path_length
+  if is_p2:
+    return find_best_path(G2, robot_chars, float("inf"))
+  else:
+    return find_best_path(G2, ["@"], float("inf"))
 
-key_map = get_key_map(G, keylocs)
-
-for node in G.nodes:
-	for node2 in util.adj4(node):
-		if node2 in G.nodes and (invalid(locs[node]) or invalid(locs[node2])):
-			if (node, node2) in G.edges:
-				G.remove_edge(node, node2)
-
-# print(currloc)
-# print(G.nodes)
-# print(G.edges)
-
-accessible_keys = set()
-blocked_keys = set()
-for k in keylocs:
-	try:
-		nx.bidirectional_dijkstra(G, currloc, keylocs[k])
-		accessible_keys.add(k)
-	except nx.NetworkXNoPath:
-		blocked_keys.add(k)
-		continue
-
-# print(accessible_keys)
-# print(blocked_keys)
-# print(key_map)
-print("Part 1")
-print(min_dist_to_finish(currloc, G, keylocs, doorlocs, 0, None, accessible_keys, blocked_keys, key_map))
-
+print("Part 1:")
+print(get_minimum_distance(False))
+print("Part 2:")
+print(get_minimum_distance(True))
