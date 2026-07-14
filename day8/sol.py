@@ -49,7 +49,7 @@ for i in range(sz):
 
 print("Part 2")
 for i in range(h):
-	print("".join([str(x) for x in ans[i * w:(i+1) * w]]))
+	print("".join(["#" if x == 1 else " " for x in ans[i * w:(i+1) * w]]))
 
 
 
