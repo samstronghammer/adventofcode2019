@@ -8,13 +8,10 @@ import intcode
 # three spots in front could be done in one register things fell
 # into place.
 
-debug_mode = False
+debug_mode = False 
 
 def i_to_c(i):
   return str(chr(i))
-
-def c_to_i(c):
-  return ord(c)
 
 def get_input(s):
   for c in s:
@@ -28,16 +25,16 @@ AND D J
 WALK
 """
 
-c = intcode.Computer(get_input(instr))
-while True:
-  val = c.calc()
-  if c.halted:
-    break
+vals = intcode.Computer(get_input(instr)).calc_list()
+ans = None
+for val in vals:
   if val > 256:
-    print("Part 1")
-    print(val)
+    ans = val
+    break
   elif debug_mode:
     print(i_to_c(val), end="")
+print("Part 1")
+print(ans)
   
 
 instr2="""OR E T
@@ -51,14 +48,12 @@ AND D J
 RUN
 """
 
-c2 = intcode.Computer(get_input(instr2))
-while True:
-  val = c2.calc()
-  if c2.halted:
-    break
+vals = intcode.Computer(get_input(instr2)).calc_list()
+for val in vals:
   if val > 256:
-    print("Part 2")
-    print(val)
+    ans = val
     break
   elif debug_mode:
     print(i_to_c(val), end="")
+print("Part 2")
+print(ans)
