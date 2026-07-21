@@ -82,7 +82,7 @@ while True:
     min_bottom = mid_bottom
 
 # Jump back 1% to not miss a rounding problem
-curr_bottom = tuple(math.floor(x * 0.99) for x in min_bottom) 
+curr_bottom = scan_for_bottom(tuple(math.floor(x * 0.99) for x in min_bottom))
 while True:
   top_pulled = calc_top_pulled(curr_bottom)
   if top_pulled == 1:
