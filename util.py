@@ -70,6 +70,12 @@ def adj4(loc):
 def adj8(loc):
   return [(loc[0] - 1, loc[1] - 1), (loc[0], loc[1] - 1), (loc[0] + 1, loc[1] - 1), (loc[0] - 1, loc[1]), (loc[0] + 1, loc[1]), (loc[0] - 1, loc[1] + 1), (loc[0], loc[1] + 1), (loc[0] + 1, loc[1] + 1)]
 
+def col_row_dir_turn_right(v):
+  return (-v[1], v[0])
+
+def col_row_dir_turn_left(v):
+  return (v[1], -v[0])
+
 def nthsmallestval(l, n):
   return sorted(list(set(l)))[n]
 

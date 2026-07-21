@@ -2,7 +2,7 @@
 import sys
 sys.path.append("..")
 import util
-import math
+import intcode 
 
 # Today was fun! My only complaint was that my robot fell off of the edge of the
 # map so I couldn't see where it was and thought the system had glitched or
@@ -15,145 +15,195 @@ import math
 # map was flipped. I had to switch all of the Ls to Rs and vice versa.
 # Part 1 of today was my best placement so far this year! 126th :)
 
-class Computer():
-	def __init__(self, get_input=lambda: None, filename="in.txt", i=0, relbase=0):
-		l = util.filetointcode(filename)
-		self.state = {}
-		for q in range(len(l)):
-			self.write(q, l[q])
-		self.i = i
-		self.relbase = relbase
-		self.halted = False
-		self.get_input = get_input
+graphical = False # change this to turn the livefeed on/off
 
-	def read(self, index):
-		if index in self.state:
-			return self.state[index]
-		else:
-			return 0
+def draw_game(panels, offset):
+  if not graphical:
+    return
+  for key in panels:
+    util.print_at_loc(util.vecadd(key, offset), panels[key])
 
-	def write(self, index, value):
-		self.state[index] = value
-
-	def getval(self, index, mode):
-		if mode == "0":
-			return self.read(self.read(index))
-		elif mode == "1":
-			return self.read(index)
-		elif mode == "2":
-			return self.read(self.read(index) + self.relbase)
-		else:
-			assert(False)
-
-	def calc(self):
-		while True:
-			nakedstr = str(self.read(self.i))
-			letters = "0" * (5 - len(nakedstr)) + nakedstr
-			code = int("".join(letters[3:]))
-			if code > 0 and code < 10:
-				if code == 1 or code == 2:
-					a1 = self.getval(self.i + 1, letters[2])
-					a2 = self.getval(self.i + 2, letters[1])
-					loc = self.read(self.i + 3) + (self.relbase if letters[0] == "2" else 0)
-					sol = a1 + a2 if code == 1 else a1 * a2
-					self.write(loc, sol)
-					self.i += 4
-				if code == 3:
-					input_val = self.get_input()
-					# print(f"HI: {input_val}")
-					if input_val == None:
-						# print("NONE")
-						return None
-					if letters[2] == "2":
-						self.write(self.read(self.i + 1) + self.relbase, input_val)
-					else:
-						self.write(self.read(self.i + 1), input_val)
-					self.i += 2
-				if code == 4:
-					ans = self.getval(self.i + 1, letters[2])
-					self.i += 2
-					return ans
-				if code == 5 or code == 6:
-					a1 = self.getval(self.i + 1, letters[2])
-					a2 = self.getval(self.i + 2, letters[1])
-					if (a1 != 0 and code == 5) or (a1 == 0 and code == 6):
-						self.i = a2
-					else:
-						self.i += 3
-				if code == 7 or code == 8:
-					a1 = self.getval(self.i + 1, letters[2])
-					a2 = self.getval(self.i + 2, letters[1])
-					loc = self.read(self.i + 3) + (self.relbase if letters[0] == "2" else 0)
-					if (a1 < a2 and code == 7) or (a1 == a2 and code == 8):
-						self.write(loc, 1)
-					else:
-						self.write(loc, 0)
-					self.i += 4
-				if code == 9:
-					self.relbase = self.relbase + self.getval(self.i + 1, letters[2])
-					self.i += 2
-			elif code == 99:
-				self.halted = True
-				return None
-			else:
-				print("ERROR")
-				print(code)
-				return None
-
-comp = Computer()
+comp = intcode.Computer()
 
 a = {}
 r = 0
 c = 0
+start_pos = None
 while True:
-	val = comp.calc()
-	if val == None:
-		break
-	if val == 10:
-		r += 1
-		c = 0
-	else:
-		char = str(chr(val))
-		a[(c, r)] = char
-		c += 1
+  val = comp.calc()
+  if val == None:
+    break
+  if val == 10:
+    r += 1
+    c = 0
+  else:
+    char = str(chr(val))
+    a[(c, r)] = char
+    if char in ["^", "<", "v", ">"]:
+      start_pos = (c, r)
+    c += 1
 
+# Part 1 calculation
 tot = 0
 for k in a:
-	intersection = True
-	for adj in util.adj4(k):
-		if not adj in a:
-			intersection = False
-			break
-		if a[adj] == ".":
-			intersection = False
-			break
-	if intersection:
-		tot += k[0]*k[1]
+  if a[k] != "#":
+    continue
+  intersection = True
+  for adj in util.adj4(k):
+    if not adj in a:
+      intersection = False
+      break
+    if a[adj] == ".":
+      intersection = False
+      break
+  if intersection:
+    tot += k[0]*k[1]
 
-print("Part 1")
-print(tot)
-print("Part 2")
+util.clear_terminal()
 
-A = "L,12,L,12,R,12"
-B = "L,8,L,8,R,12,L,8,L,8"
-C = "L,10,R,8,R,12"
-master = "A,A,B,C,C,A,B,C,A,B"
+util.print_at_loc((1, 1), "Part 1")
+util.print_at_loc((1, 2), tot)
+util.print_at_loc((1, 3), "Part 2")
 
-total = master + "\n" + A + "\n" + B + "\n" + C + "\n" + "n" + "\n"
+
+def robot_to_direction(c):
+  match c:
+    case "^":
+      return (0, -1)
+    case "<":
+      return (-1, 0)
+    case "v":
+      return (0, 1)
+    case ">":
+      return (1, 0)
+
+
+# Calculates an instruction path using the structure of the input
+def calc_instructions(start_pos, panels):
+  curr_dir = robot_to_direction(panels[start_pos])
+  curr_pos = start_pos
+  instructions = []
+  while True:
+    # try straight
+    straight_pos = util.vecadd(curr_pos, curr_dir)
+    straight_char = panels.get(straight_pos, ".")
+    if straight_char == "#":
+      curr_pos = straight_pos
+      instructions[-1] += 1
+      continue
+    # try left 
+    left_dir = util.col_row_dir_turn_left(curr_dir)
+    left_pos = util.vecadd(curr_pos, left_dir)
+    left_char = panels.get(left_pos, ".")
+    if left_char == "#":
+      curr_dir = left_dir
+      curr_pos = left_pos
+      instructions.append("L")
+      instructions.append(1)
+      continue
+    # try right 
+    right_dir = util.col_row_dir_turn_right(curr_dir)
+    right_pos = util.vecadd(curr_pos, right_dir)
+    right_char = panels.get(right_pos, ".")
+    if right_char == "#":
+      curr_dir = right_dir
+      curr_pos = right_pos
+      instructions.append("R")
+      instructions.append(1)
+      continue
+    # dead end, done
+    return [str(x) for x in instructions]
+
+all_instructions = calc_instructions(start_pos, a)
+all_subroutine_chars = ["A", "B", "C"]
+
+# Replace a subroutine in an instruction list
+def replace(instructions, subroutine_char, subroutine_instructions):
+  curr_instructions = instructions[:]
+  curr_index = 0
+  while curr_index < len(curr_instructions):
+    for offset in range(len(subroutine_instructions)):
+      subroutine_instruction = subroutine_instructions[offset]
+      if curr_index + offset >= len(curr_instructions):
+        break
+      main_instruction = curr_instructions[curr_index + offset]
+      if subroutine_instruction != main_instruction:
+        break
+    else:
+      curr_instructions = curr_instructions[0:curr_index] + [subroutine_char] + curr_instructions[curr_index + len(subroutine_instructions):]
+    curr_index += 1
+  return curr_instructions
+
+def is_done(instructions):
+  return all(map(lambda x: x in all_subroutine_chars, instructions))
+
+# Takes in instructions, returns dict mapping chars to instruction lists or none if invalid
+def find_subroutines(instructions, subroutine_chars_left):
+  if len(subroutine_chars_left) == 0:
+    if is_done(instructions):
+      return dict()
+    return None
+
+  subroutine_char = subroutine_chars_left[0]
+  remaining_subroutine_chars = subroutine_chars_left[1:]
+  start_index = list(map(lambda x: x in all_subroutine_chars, instructions)).index(False) # find first index after subroutine instructions
+  for end_index in range(start_index, len(instructions)):
+    subroutine_instructions = instructions[start_index:end_index + 1]
+    if any(map(lambda x: x in subroutine_chars_left, subroutine_instructions)):
+      break 
+    subroutine_length = len(",".join(subroutine_instructions))
+    if subroutine_length > 20: # too long
+      break
+    replaced_instructions = replace(instructions, subroutine_char, subroutine_instructions)
+    recursive_result = find_subroutines(replaced_instructions, remaining_subroutine_chars)
+    if recursive_result == None:
+      continue
+    recursive_result[subroutine_char] = subroutine_instructions
+    return recursive_result 
+
+  return None
+
+subroutines = find_subroutines(all_instructions, all_subroutine_chars) # {routine char: subroutine instruction list}
+main_instructions = all_instructions
+for c in all_subroutine_chars:
+  main_instructions = replace(main_instructions, c, subroutines[c])
+routines = [main_instructions, *(subroutines[x] for x in all_subroutine_chars), ["y" if graphical else "n"]]
+total = "\n".join([",".join(x) for x in routines]) + "\n"
 input_index = 0
 
 def get_input_func2():
-	global input_index
-	ans = ord(total[input_index])
-	input_index += 1
-	return ans
+  for instruction in total:
+    yield ord(instruction)
 
-comp2 = Computer(get_input=get_input_func2)
+comp2 = intcode.Computer(get_input_func2())
 comp2.write(0, 2)
+a = {}
+r = 0
+c = 0
+just_added_row = False
 while True:
-	val = comp2.calc()
-	if val == None:
-		break
-	if val > 256:
-		print(val)
+  val = comp2.calc()
+  if val == None:
+    break
+  if val > 256:
+    util.print_at_loc((1, 4), val)
+    break
+  else:
+    if val == 10:
+      if just_added_row:
+        draw_game(a, (1, 5))
+        a = {}
+        r = 0
+        c = 0
+      else:
+        r += 1
+        c = 0
+        just_added_row = True
+    else:
+      just_added_row = False
+      char = str(chr(val))
+      a[(c, r)] = char
+      c += 1
+if graphical:
+  util.print_at_loc((1, 70), "")
 
